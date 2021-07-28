@@ -1,0 +1,74 @@
+image: tiangolo/docker-with-compose
+
+before_script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  - pip install docker-auto-labels
+
+stages:
+  - test
+  - build
+  - deploy
+
+tests:
+  stage: test
+  script:
+    - sh ./scripts/test.sh
+  tags:
+    - build
+    - test
+
+build-stag:
+  stage: build
+  script:
+    - TAG=stag sh ./scripts/build-push.sh
+  only:
+    - master
+  tags:
+    - build
+    - test
+    
+build-prod:
+  stage: build
+  script:
+    - TAG=prod sh ./scripts/build-push.sh
+  only:
+    - production
+  tags:
+    - build
+    - test
+
+deploy-stag:
+  stage: deploy
+  script: 
+    - >
+      DOMAIN=stag.pii-picker.com
+      TRAEFIK_TAG=stag.pii-picker.com
+      STACK_NAME=stag-pii-picker-com
+      TAG=stag
+      sh ./scripts/deploy.sh
+  environment:
+    name: staging
+    url: https://stag.pii-picker.com
+  only:
+    - master
+  tags:
+    - swarm
+    - stag
+
+deploy-prod:
+  stage: deploy
+  script:
+    - >
+      DOMAIN=pii-picker.com
+      TRAEFIK_TAG=pii-picker.com
+      STACK_NAME=pii-picker-com
+      TAG=prod
+      sh ./scripts/deploy.sh
+  environment:
+    name: production
+    url: https://pii-picker.com
+  only:
+    - production
+  tags:
+    - swarm
+    - prod
